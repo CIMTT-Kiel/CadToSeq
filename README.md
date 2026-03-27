@@ -22,9 +22,8 @@ source .venv/bin/activate
 ```
 
 ## Preprocessing
-
-Geometry embeddings (`vecset.npy`) are produced from surface point clouds using the bundled VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet)). This step is not included in this repo.
 ---
+Geometry embeddings (`vecset.npy`) are produced from surface point clouds using the bundled VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet)). This step is not included in this repo.
 
 ## Training
 
