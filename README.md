@@ -1,42 +1,82 @@
 # CadToSeq
 
-Predicts manufacturing process sequences from CAD geometry using a Transformer decoder.
+**Predicts manufacturing process sequences directly from CAD geometry — using a Transformer decoder.**
 
-Given a set of geometry feature vectors `[1024, 32]` (produced by a VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet))), the model generates an ordered sequence of manufacturing steps such as *milling → drilling → welding → grinding*.
+Given a set of geometry feature vectors `[1024, 32]` (VecSet embeddings), CadToSeq generates an ordered sequence of manufacturing steps such as:
 
----
+> *fräsen → bohren → schweißen → schleifen → STOP*
 
-## Requirements
-
-- Python ≥ 3.10, PyTorch ≥ 2.1
-- CUDA-capable GPU strongly recommended
-- Pretrained checkpoints (see below)
+> **Note on geometry embeddings:** VecSet embeddings are produced from surface point clouds using the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. That preprocessing step is **not part of this repository** — CadToSeq takes pre-computed `vecset.npy` files as input. See [Preparing your data](#preparing-your-data) below.
 
 ---
 
-## Installation
+## How it works
+
+1. A CAD part's geometry is encoded externally into a compact set of vectors (`vecset.npy`).
+2. The Transformer decoder reads these vectors and autoregressively predicts manufacturing steps.
+3. Generation stops when the model emits a `STOP` token.
+
+---
+
+## Getting started
+
+### Requirements
+
+- Python ≥ 3.10
+- PyTorch ≥ 2.1
+- A CUDA-capable GPU is strongly recommended for training
+
+### Installation
 
 ```bash
 uv sync
 source .venv/bin/activate
 ```
 
-## Preprocessing
 ---
-Geometry embeddings (`vecset.npy`) are produced from surface point clouds using the bundled VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet)). This step is not included in this repo.
+
+## Preparing your data
+
+CadToSeq expects each sample to live in its own directory:
+
+```
+<data_dir>/
+    <part_id>/
+        features/
+            vecset.npy   # geometry embedding [1024, 32], float32
+        plan.csv         # process plan (Schritt;Dauer[min];Kosten[($)])
+```
+
+**Real data:** Download the [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client) dataset and generate VecSet embeddings with the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. Then set `paths.data_dir` in `config.yaml` to point at the dataset root.
+
+**Synthetic test data:** To try out the pipeline without real data, generate trivial random samples:
+
+```bash
+python scripts/create_test_data.py            # creates 200 samples in ./test_data
+python scripts/create_test_data.py --data_dir /tmp/mydata --n_samples 500
+```
+
+Then update `config.yaml`:
+
+```yaml
+paths:
+  data_dir: ./test_data
+```
+
+---
 
 ## Training
 
-All parameters are controlled via `config.yaml`. Key settings:
+All hyperparameters are controlled via `config.yaml`. A few common ways to launch training:
 
 ```bash
-# Train with best-known hyperparameters (from config.yaml):
+# Train with the best-known hyperparameters from config.yaml:
 python scripts/train.py
 
-# Run Optuna HP-tuning first, then final training:
+# Run Optuna hyperparameter search first, then final training:
 python scripts/train.py --tuning=True
 
-# Override individual hyperparameters:
+# Override individual hyperparameters on the fly:
 python scripts/train.py --lr=0.001 --embed_dim=96 --num_layers=3
 ```
 
@@ -44,14 +84,17 @@ python scripts/train.py --lr=0.001 --embed_dim=96 --num_layers=3
 
 ## Inference
 
+**From the command line:**
+
 ```bash
 python scripts/infer.py --vecset path/to/features/vecset.npy
 ```
 
-Or via Python:
+**From Python:**
 
 ```python
-import torch, numpy as np
+import torch
+import numpy as np
 from mpp.ml.models.sequence.cadtoseq_module import ARMSTM
 from mpp.ml.datasets.fabricad import Fabricad
 
@@ -68,35 +111,37 @@ print(Fabricad.decode_sequence(token_ids[0].tolist()))
 
 ---
 
-## Data
+## Dataset
 
-Trained on [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client). Each sample contains:
-- `features/vecset.npy` – geometry embedding `[1024, 32]`
-- `plan.csv` – process plan with columns `Schritt;Dauer[min];Kosten[($)]`
+The model was trained on [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client). Each sample consists of:
 
-Set dataset paths via environment variables or `config.yaml`:
+| File | Description |
+|------|-------------|
+| `features/vecset.npy` | Geometry embedding of shape `[1024, 32]` |
+| `plan.csv` | Process plan with columns `Schritt;Dauer[min];Kosten[($)]` |
+
+Dataset paths can be set via environment variables or directly in `config.yaml`:
+
+```bash
+export MPP_FEATURE_DATA=/path/to/fabricad
+```
+
 ---
 
 ## Citation
 
+If you use the VecSet encoder in your workflow, please cite the original work:
+
+```bibtex
 @article{10.1145/3592442,
-author = {Zhang, Biao and Tang, Jiapeng and Nie\ss{}ner, Matthias and Wonka, Peter},
-title = {3DShape2VecSet: A 3D Shape Representation for Neural Fields and Generative Diffusion Models},
-year = {2023},
-issue_date = {August 2023},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {42},
-number = {4},
-issn = {0730-0301},
-url = {https://doi.org/10.1145/3592442},
-doi = {10.1145/3592442},
-abstract = {We introduce 3DShape2VecSet, a novel shape representation for neural fields designed for generative diffusion models. Our shape representation can encode 3D shapes given as surface models or point clouds, and represents them as neural fields. The concept of neural fields has previously been combined with a global latent vector, a regular grid of latent vectors, or an irregular grid of latent vectors. Our new representation encodes neural fields on top of a set of vectors. We draw from multiple concepts, such as the radial basis function representation, and the cross attention and self-attention function, to design a learnable representation that is especially suitable for processing with transformers. Our results show improved performance in 3D shape encoding and 3D shape generative modeling tasks. We demonstrate a wide variety of generative applications: unconditioned generation, category-conditioned generation, text-conditioned generation, point-cloud completion, and image-conditioned generation. Code: https://1zb.github.io/3DShape2VecSet/.},
-journal = {ACM Trans. Graph.},
-month = {jul},
-articleno = {92},
-numpages = {16},
-keywords = {3D shape generation, generative models, shape reconstruction, 3D shape representation, diffusion models}
+  author    = {Zhang, Biao and Tang, Jiapeng and Nie{\ss}ner, Matthias and Wonka, Peter},
+  title     = {3DShape2VecSet: A 3D Shape Representation for Neural Fields and Generative Diffusion Models},
+  journal   = {ACM Trans. Graph.},
+  year      = {2023},
+  volume    = {42},
+  number    = {4},
+  articleno = {92},
+  doi       = {10.1145/3592442}
 }
 ```
 
@@ -104,6 +149,5 @@ keywords = {3D shape generation, generative models, shape reconstruction, 3D sha
 
 ## Acknowledgements
 
-The VecSet encoder (`src/mpp/ml/datasets/preprocessing/`) is adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) by Biao Zhang, used under the MIT License.
-
-This repository was extracted and commented from a larger research project with the assistance of [Claude](https://claude.ai) (Anthropic).
+- VecSet embeddings are computed with the encoder from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) by Biao Zhang (MIT License).
+- This repository was extracted and documented from a larger research project with the assistance of [Claude](https://claude.ai) (Anthropic).

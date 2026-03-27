@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model checkpoints
+src/mpp/ml/models/checkpoints/
+
+# MLflow
+mlruns/
+
+# Logs
+*.log
+nohup.out
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

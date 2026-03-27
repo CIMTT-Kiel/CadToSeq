@@ -8,9 +8,8 @@
 # Paths
 # ------------------------------------------------------------
 paths:
-  data_dir: /path/to/fabricad
-  # Download: https://drive.google.com/drive/folders/1tX4pFulWqtICYgchRXmzscHDRJ5q2iSz (accssed 27 March 2026) 
-  vecset_encoder_ckpt: checkpoints/vecset_encoder.ckpt
+  data_dir: /path/to/fabricad   # or ./test_data when using create_test_data.py
+  # FabriCAD dataset: https://github.com/CIMTT-Kiel/cad-api-client
 
   # Trained CadToSeq model checkpoint (used for inference).
   cadtoseq_ckpt: checkpoints/cadtoseq.ckpt
