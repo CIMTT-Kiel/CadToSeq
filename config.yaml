@@ -1,0 +1,93 @@
+# ============================================================
+# CadToSeq – Project Configuration
+# ============================================================
+# CLI arguments (--lr, --device, ...) override values.
+# ============================================================
+
+# ------------------------------------------------------------
+# Paths
+# ------------------------------------------------------------
+paths:
+  data_dir: /path/to/fabricad
+  # Download: https://drive.google.com/drive/folders/1tX4pFulWqtICYgchRXmzscHDRJ5q2iSz (accssed 27 March 2026) 
+  vecset_encoder_ckpt: checkpoints/vecset_encoder.ckpt
+
+  # Trained CadToSeq model checkpoint (used for inference).
+  cadtoseq_ckpt: checkpoints/cadtoseq.ckpt
+
+# ------------------------------------------------------------
+# MLflow experiment tracking
+# ------------------------------------------------------------
+mlflow:
+  tracking_uri: "./mlruns" # or server
+  experiment_name: "cadtoseq"
+  tuning_experiment_name: "cadtoseq-hyperparameter-tuning"
+
+# ------------------------------------------------------------
+# Data loading
+# ------------------------------------------------------------
+data:
+  input_type: "vecset"
+  target_type: "seq"
+  batch_size: 800
+  num_workers: 0
+
+# ------------------------------------------------------------
+# Training
+# ------------------------------------------------------------
+training:
+  gpu_id: 0                 # GPU index (0-based)
+  n_trials: 50              # Optuna trials for HP tuning
+  tuning_epochs: 100        # Max epochs per tuning trial
+  tuning_patience: 10       # Early-stopping patience during tuning
+  final_epochs: 1000        # Max epochs for final training run
+  final_patience: 50        # Early-stopping patience for final run
+  weight_decay: 0.01
+  log_every_n_steps: 5
+  plot_every_n_epochs: 5    # Frequency of MLflow diagnostic plots
+
+# ------------------------------------------------------------
+# Scheduled Sampling
+# ------------------------------------------------------------
+scheduled_sampling:
+  epsilon_max: 0.6          # Max sampling rate; 0.0 = disabled (pure teacher forcing)
+  warmup_epochs: 10         # Epochs of pure teacher forcing before rate increases
+
+# ------------------------------------------------------------
+# Checkpoint file naming
+# ------------------------------------------------------------
+checkpoint:
+  tuning_subdir: "tuning/cadtoseq"
+  best_subdir: "best_model/cadtoseq"
+  filename: "cadtoseq-{epoch:02d}-{val_loss:.4f}"
+
+# ------------------------------------------------------------
+# Hyperparameter search space (used when --tuning=True)
+# ------------------------------------------------------------
+hyperparameter_search:
+  dropout:
+    low: 0.1
+    high: 0.5
+  lr:
+    low: 1.0e-5
+    high: 1.0e-3
+    log: true
+  nhead:
+    choices: [4, 8, 16]
+  num_layers:
+    low: 2
+    high: 6
+  embed_dim:
+    low: 32
+    high: 128
+    step: 32
+
+# ------------------------------------------------------------
+# Default Model hyperparameters - according to paper
+# ------------------------------------------------------------
+model:
+  lr: 9.77e-4
+  embed_dim: 96
+  nhead: 16
+  num_layers: 3
+  dropout: 0.265

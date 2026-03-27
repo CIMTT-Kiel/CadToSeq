@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpp"
+version = "1.0.0"
+description = "CadToSeq – Autoregressive Manufacturing Step Prediction from CAD Geometry"
+authors = [{ name = "Kruse Michel", email = "michel.kruse@haw-kiel.de" }]
+requires-python = ">=3.10"
+
+dependencies = [
+  "torch>=2.1.0",
+  "pytorch-lightning>=2.1.0",
+  "mlflow>=2.10.0",
+  "pyyaml>=6.0",
+  "tqdm>=4.0",
+  "scikit-learn",
+  "pandas",
+  "numpy",
+  "matplotlib",
+  "seaborn",
+  "optuna>=4.4.0",
+  "einops",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "coverage",
+    "ruff",
+    "ipython",
+    "mypy",
+    "black",
+    "pre-commit",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

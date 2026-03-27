@@ -1,0 +1,45 @@
+# ============================================================
+# Configuration: Sequence prediction (cadtoseq)
+# Inherits from config/base.yaml, overrides task-specific values.
+# ============================================================
+
+mlflow:
+  experiment_name: "cadtoseq"
+  tuning_experiment_name: "cadtoseq-hyperparameter-tuning"
+
+data:
+  target_type: "seq"
+
+training:
+  gpu_id: 0             # GPU index (0 or 1)
+  tuning_epochs: 100      # With patience=8, ~17 epochs suffice until early stop → buffer for slow trials
+  final_epochs: 1000
+  tuning_patience: 10     # Faster exit; saves ~20% time per trial vs. patience=10
+  plot_every_n_epochs: 5
+
+scheduled_sampling:
+  epsilon_max: 0.0      # Maximum sampling rate; 0.0 = disabled
+  warmup_epochs: 200     # Epochs of pure teacher forcing before the linear ramp-up
+
+checkpoint:
+  tuning_subdir: "tuning/cadtoseq"
+  best_subdir: "best_model/cadtoseq"
+  filename: "cadtoseq-{epoch:02d}-{val_loss:.4f}"
+
+hyperparameter_search:
+  dropout:
+    low: 0.1
+    high: 0.5
+  lr:
+    low: 1.0e-5
+    high: 1.0e-3
+    log: true
+  nhead:
+    choices: [4, 8, 16]
+  num_layers:
+    low: 2      
+    high: 6     
+  embed_dim:
+    low: 32    
+    high: 128
+    step: 32   
