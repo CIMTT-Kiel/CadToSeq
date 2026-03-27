@@ -21,26 +21,6 @@ uv sync
 source .venv/bin/activate
 ```
 
----
-
-## Checkpoints
-
-| Checkpoint | Purpose |
-|---|---|
-| VecSet ae | Point cloud → geometry embedding |
-| CadToSeq model | Geometry embedding → process sequence |
-
-Set the paths in `config.yaml`:
-
-```yaml
-paths:
-  vecset_encoder_ckpt: checkpoints/vecset_encoder.ckpt
-  cadtoseq_ckpt:       checkpoints/cadtoseq.ckpt
-  data_dir:            /path/to/fabricad
-```
-
----
-
 ## Preprocessing
 
 Geometry embeddings (`vecset.npy`) are produced from surface point clouds using the bundled VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet)). This step is not included in this repo.
