@@ -37,7 +37,7 @@ source .venv/bin/activate
 
 ## Preparing your data
 
-CadToSeq expects each sample to live in its own directory:
+The current configuration expects each sample its own directory:
 
 ```
 <data_dir>/
@@ -47,7 +47,7 @@ CadToSeq expects each sample to live in its own directory:
         plan.csv         # process plan (Schritt;Dauer[min];Kosten[($)])
 ```
 
-**Real data:** Download the [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client) dataset and generate VecSet embeddings with the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. Then set `paths.data_dir` in `config.yaml` to point at the dataset root.
+**FabriCAD data:** Download the [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client) dataset and generate VecSet embeddings with the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. Then set `paths.data_dir` in `config.yaml` to point at the dataset root.
 
 **Synthetic test data:** To try out the pipeline without real data, generate trivial random samples:
 
@@ -67,7 +67,7 @@ paths:
 
 ## Training
 
-All hyperparameters are controlled via `config.yaml`. A few common ways to launch training:
+All hyperparameters are controlled via `config.yaml`. Start training with:
 
 ```bash
 # Train with the best-known hyperparameters from config.yaml:
@@ -96,7 +96,7 @@ python scripts/infer.py --vecset path/to/features/vecset.npy
 import torch
 import numpy as np
 from mpp.ml.models.sequence.cadtoseq_module import ARMSTM
-from mpp.ml.datasets.fabricad import Fabricad
+from mpp.ml.datasets.fabricad import Fabricad 
 
 model = ARMSTM.load_from_checkpoint("checkpoints/cadtoseq.ckpt", map_location="cpu")
 model.eval()
@@ -113,7 +113,7 @@ print(Fabricad.decode_sequence(token_ids[0].tolist()))
 
 ## Dataset
 
-The model was trained on [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client). Each sample consists of:
+The model was trained on [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client). Each sample consists multiple files. For this project the following are essential:
 
 | File | Description |
 |------|-------------|
