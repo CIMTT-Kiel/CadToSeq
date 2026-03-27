@@ -2,7 +2,7 @@
 
 Predicts manufacturing process sequences from CAD geometry using a Transformer decoder.
 
-Given a set of geometry feature vectors `[1024, 32]` (produced by a VecSet encoder from a surface point cloud), the model generates an ordered sequence of manufacturing steps such as *milling → drilling → welding → grinding*.
+Given a set of geometry feature vectors `[1024, 32]` (produced by a VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet))), the model generates an ordered sequence of manufacturing steps such as *milling → drilling → welding → grinding*.
 
 ---
 
@@ -30,8 +30,6 @@ source .venv/bin/activate
 | VecSet ae | Point cloud → geometry embedding |
 | CadToSeq model | Geometry embedding → process sequence |
 
-Download links: `<VECSET_CHECKPOINT_URL>` · `<CADTOSEQ_CHECKPOINT_URL>`
-
 Set the paths in `config.yaml`:
 
 ```yaml
@@ -45,28 +43,12 @@ paths:
 
 ## Preprocessing
 
-Geometry embeddings (`vecset.npy`) are produced from surface point clouds using the bundled VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet)).
-
-**Step 1 – STEP → point cloud:** Sample 8192 surface points from each STEP file and save as `pointcloud.npy` (shape `[8192, 3]`, float32, normalised to `[-1, 1]`). Any CAD tool works (FreeCAD, Open3D, PythonOCC). This step is not included in this repo.
-
-**Step 2 – point cloud → vecset.npy:**
-
-```bash
-python scripts/create_vecsets.py --data_dir /path/to/fabricad
-```
-
+Geometry embeddings (`vecset.npy`) are produced from surface point clouds using the bundled VecSet encoder (adapted from [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet)). This step is not included in this repo.
 ---
 
 ## Training
 
 All parameters are controlled via `config.yaml`. Key settings:
-
-| Key | Default | Description |
-|---|---|---|
-| `training.final_epochs` | 1000 | Max training epochs |
-| `training.final_patience` | 50 | Early stopping patience |
-| `training.n_trials` | 50 | Optuna HP-search trials |
-| `scheduled_sampling.epsilon_max` | 0.0 | Max scheduled sampling rate (0 = off) |
 
 ```bash
 # Train with best-known hyperparameters (from config.yaml):
@@ -87,7 +69,7 @@ python scripts/train.py --lr=0.001 --embed_dim=96 --num_layers=3
 python scripts/infer.py --vecset path/to/features/vecset.npy
 ```
 
-Or from Python:
+Or via Python:
 
 ```python
 import torch, numpy as np
@@ -118,19 +100,24 @@ Set dataset paths via environment variables or `config.yaml`:
 
 ## Citation
 
-```bibtex
-@article{cadtoseq2025,
-  title   = {CadToSeq: Predicting Manufacturing Process Sequences from CAD Geometry using Transformer Decoders},
-  author  = {Kruse, Michel and ...},
-  year    = {2025},
-}
-
 @article{10.1145/3592442,
-  author  = {Zhang, Biao and Tang, Jiapeng and Nie{\ss}ner, Matthias and Wonka, Peter},
-  title   = {3DShape2VecSet: A 3D Shape Representation for Neural Fields and Generative Diffusion Models},
-  journal = {ACM Trans. Graph.},
-  year    = {2023},
-  doi     = {10.1145/3592442},
+author = {Zhang, Biao and Tang, Jiapeng and Nie\ss{}ner, Matthias and Wonka, Peter},
+title = {3DShape2VecSet: A 3D Shape Representation for Neural Fields and Generative Diffusion Models},
+year = {2023},
+issue_date = {August 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {42},
+number = {4},
+issn = {0730-0301},
+url = {https://doi.org/10.1145/3592442},
+doi = {10.1145/3592442},
+abstract = {We introduce 3DShape2VecSet, a novel shape representation for neural fields designed for generative diffusion models. Our shape representation can encode 3D shapes given as surface models or point clouds, and represents them as neural fields. The concept of neural fields has previously been combined with a global latent vector, a regular grid of latent vectors, or an irregular grid of latent vectors. Our new representation encodes neural fields on top of a set of vectors. We draw from multiple concepts, such as the radial basis function representation, and the cross attention and self-attention function, to design a learnable representation that is especially suitable for processing with transformers. Our results show improved performance in 3D shape encoding and 3D shape generative modeling tasks. We demonstrate a wide variety of generative applications: unconditioned generation, category-conditioned generation, text-conditioned generation, point-cloud completion, and image-conditioned generation. Code: https://1zb.github.io/3DShape2VecSet/.},
+journal = {ACM Trans. Graph.},
+month = {jul},
+articleno = {92},
+numpages = {16},
+keywords = {3D shape generation, generative models, shape reconstruction, 3D shape representation, diffusion models}
 }
 ```
 
