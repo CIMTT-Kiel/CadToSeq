@@ -4,9 +4,9 @@ This repository already works but is extracted from a larger research project. W
 
 # CadToSeq
 
-CadToSeq is an autoregressive transformer-decoder model for manufacturing process sequence prediction from 3D part geometry. Given a CAD model in STEP format, it encodes the part geometry using Vectorset embeddings and predicts an ordered sequence of manufacturing operations — such as milling, drilling, or welding — token by token. Trained on the FabriCAD dataset of 100,000 synthetic CAD models, it achieves an Exact Match Rate of 74.35% and an Elementwise Accuracy of 89.06% on the FabriCAD test set, and demonstrates initial transfer to real industrial data. This repository contains the model architecture, training code, and evaluation scripts.
+CadToSeq is an autoregressive transformer-decoder model for manufacturing process sequence prediction from 3D part geometry. Given a CAD model in STEP format, it encodes the part geometry using Vectorset embeddings and predicts an ordered sequence of manufacturing operations — such as milling, drilling, or welding — token by token. Trained on the FabriCAD dataset of 100,000 synthetic CAD models, it achieves an Exact Match Rate of 74.35% and an Elementwise Accuracy of 89.06% on the test set (defined by config/paper_split.json), and demonstrates initial transfer to real industrial data. This repository contains the model architecture, training code, and evaluation scripts.
 
-This repository will accompanies a paper-submission and reflects the codebase at the time of submission. If accepted, the paper will be referenced here. The project is actively being developed; further work will be referenced here as it becomes available.
+This repository refers to a paper-submission and reflects the codebase at the time of submission. If accepted, the paper will be referenced here. The project is actively being developed; further work will be referenced here as it becomes available.
 
 ---
 
