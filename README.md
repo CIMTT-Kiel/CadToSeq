@@ -1,16 +1,12 @@
 # Disclaimer
 **Work in Progress — Not yet fully validated**
-This repository is currently being extracted from a larger research project. The process is not yet complete, so the code has not been fully tested and validated. A stable, reviewed version will be available shortly.
+This repository already works but is extracted from a larger research project. We are currently working on optimising the code for the separated CadToSeq approach. This is not fully tested yet. A final version will be available shortly.
 
 # CadToSeq
 
-**Predicts manufacturing process sequences directly from CAD geometry — using a Transformer decoder.**
+CadToSeq is an autoregressive transformer-decoder model for manufacturing process sequence prediction from 3D part geometry. Given a CAD model in STEP format, it encodes the part geometry using Vectorset embeddings and predicts an ordered sequence of manufacturing operations — such as milling, drilling, or welding — token by token. Trained on the FabriCAD dataset of 100,000 synthetic CAD models, it achieves an Exact Match Rate of 74.35% and an Elementwise Accuracy of 89.06% on the FabriCAD test set, and demonstrates initial transfer to real industrial data. This repository contains the model architecture, training code, and evaluation scripts.
 
-Given a set of geometry feature vectors `[1024, 32]` (VecSet embeddings), CadToSeq generates an ordered sequence of manufacturing steps such as:
-
-> *milling → drilling → welding → grinding → STOP*
-
-> **Note on geometry embeddings:** VecSet embeddings are produced from surface point clouds using the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. The preprocessing step is **not part of this repository** — CadToSeq takes pre-computed `vecset.npy` files as input. See [Preparing your data](#preparing-your-data) below.
+This repository will accompanies a paper-submission and reflects the codebase at the time of submission. If accepted, the paper will be referenced here. The project is actively being developed; further work will be referenced here as it becomes available.
 
 ---
 
@@ -29,6 +25,14 @@ The default `config/config.yaml` points to this demo subset so the pipeline can 
 1. A CAD part's geometry is encoded externally into a compact set of vectors (`vecset.npy`).
 2. The Transformer decoder reads these vectors and autoregressively predicts manufacturing steps.
 3. Generation stops when the model emits a `STOP` token.
+
+
+Given a set of geometry feature vectors `[1024, 32]` (VecSet embeddings), CadToSeq generates an ordered sequence of manufacturing steps such as:
+
+> *milling → drilling → welding → grinding → STOP*
+
+> **Note on geometry embeddings:** VecSet embeddings are produced from surface point clouds using the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. The preprocessing step is **not part of this repository** — CadToSeq takes pre-computed `vecset.npy` files as input. See [Preparing your data](#preparing-your-data) below.
+
 
 ---
 
