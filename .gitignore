@@ -25,6 +25,7 @@ env/
 
 # Model checkpoints
 src/mpp/ml/models/checkpoints/
+*.ckpt
 
 # MLflow
 mlruns/
