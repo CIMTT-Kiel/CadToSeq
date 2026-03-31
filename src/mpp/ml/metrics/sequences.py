@@ -198,17 +198,10 @@ class Sequence_comparator:
 
         local_levenshtein = self.levenshtein_distance(a, b, mask_a, mask_b)
 
-        # Exact match = Levenshtein 0.
-        # The intersection-mask approach ((a==b)|~mask).all() is too lenient:
-        # positions outside the overlap (e.g. when one sequence stops early)
-        # are treated as automatically correct, inflating the metric.
-        # Lev=0 correctly requires both valid-token sequences to be identical.
+        # EMR = Levenshtein 0 - see Paper
         local_exact_match = (local_levenshtein == 0)
 
-        # EA uses the target mask as denominator: positions where the target
-        # has a valid token but the prediction is missing one (sequence too
-        # short) count as wrong. Using the intersection mask (mask_a & mask_b)
-        # would inflate EA for predictions shorter than the target.
+        # EA see Paper
         local_elementwise_accuracy = self.elementwise_accuracy(a, b, mask_b)
         local_shifted_accuracy = self.shifted_accuracy(a, b, mask_b)
 

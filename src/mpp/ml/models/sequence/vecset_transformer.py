@@ -6,12 +6,9 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
-
 #custom imports
 from mpp.constants import VOCAB
 from mpp.ml.datasets.fabricad import Fabricad
-from mpp.constants import VOCAB
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)8s - %(message)s",
@@ -20,11 +17,10 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter("%(asctime)s %(levelname)8s - %(message)s")
 
 
 class PositionalEncoding(nn.Module):
-    """Sinusoidal positional encoding (Vaswani et al., 2017)."""
+    """Sinusoidal positional encoding - adapted from: "Attention is all you need" (Vaswani et al., 2017)."""
 
     def __init__(self, embed_dim: int, max_len: int = 512):
         super().__init__()
@@ -98,16 +94,14 @@ class ARMSTD(nn.Module):
         Parameters
         ----------
         vector_set : torch.Tensor
-            Input tensor of shape (batch_size, set_size, input_dim), representing feature vectors.
+            Input tensor of shape (batch_size, num_tokens, input_dim), representing feature vectors.
         tgt_seq : torch.Tensor
             Tensor of token indices representing the target sequence 
-            (batch_size, seq_len), usually used during teacher forcing.
 
         Returns
         -------
         torch.Tensor
-            Output logits of shape (batch_size, seq_len, num_steps), 
-            which can be used with CrossEntropyLoss.
+            Output logits of shape (batch_size, seq_len, num_steps)
         """
         batch_size = vector_set.size(0)
         memory = self.input_dropout(self.input_linear(vector_set)) 
@@ -134,26 +128,6 @@ class ARMSTD(nn.Module):
         Autoregressively generates a sequence of manufacturing steps given input vectors.
 
         Starts with a START token and generates one token at a time until a STOP token
-        is produced or the maximum sequence length is reached.
-
-        Parameters
-        ----------
-        vector_set : torch.Tensor
-            Input tensor of shape (batch_size, set_size, input_dim), representing feature vectors.
-        return_probs : bool, optional
-            If True, returns softmax probabilities for each step (default: False).
-        device : str, optional
-            Device to perform computation on (e.g., 'cpu' or 'cuda').
-
-        Returns
-        -------
-        Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]
-            If return_probs is False:
-                Generated token sequences of shape (batch_size, max_seq_len)
-            If return_probs is True:
-                Tuple of:
-                    - Generated sequences (batch_size, max_seq_len)
-                    - Softmax probabilities (batch_size, max_seq_len, num_steps)
         """
         batch_size = vector_set.size(0)
         vector_set = vector_set.to(device)
@@ -202,10 +176,6 @@ class ARMSTD(nn.Module):
         # Remove the START token from the generated sequence
         return (generated[:, 1:], all_probs) if return_probs else generated[:, 1:]
     
-    def train_model():
-        pass  
-
-
 if __name__ == "__main__":
     batch_size = 1
     vector_set = torch.randn(batch_size, 1024, 32)

@@ -4,7 +4,6 @@ import logging
 # third party imports
 import torch
 import pytorch_lightning as pl
-import torch.nn.functional as F
 import torch.nn as nn
 import mlflow
 from torch.nn.attention import sdpa_kernel, SDPBackend
@@ -16,15 +15,12 @@ from mpp.ml.metrics.sequences import Sequence_comparator
 
 class ARMSTM(pl.LightningModule):
     """
-    PyTorch Lightning Module for training a Transformer-based model for 
-    autoregressive manufacturing step prediction.
+    PyTorch Lightning Module
 
     This module wraps the ARMSTD decoder model and provides:
     - Autoregressive sequence modeling using teacher forcing during training
-    - Training, validation, and inference logic
-    - Cross-entropy loss (with PAD-token masking)
-    - Sequence-level evaluation metrics (exact match, Levenshtein distance, etc.)
-    - Learning rate scheduling and optimizer configuration
+    - Training, validation, and inference funcs
+    - Learning rate scheduling 
 
     Parameters
     ----------
@@ -78,45 +74,9 @@ class ARMSTM(pl.LightningModule):
 
 
     def forward(self, vector_set, tgt_seq):
-        """
-        Forward pass of the model.
-
-        Parameters
-        ----------
-        vector_set : torch.Tensor
-            Input features of shape (batch_size, set_size, input_dim).
-        tgt_seq : torch.Tensor
-            Target sequence input to the decoder (e.g., shifted ground truth tokens).
-
-        Returns
-        -------
-        torch.Tensor
-            Output logits of shape (batch_size, seq_len, num_classes).
-        """
-
-        
         return self.model(vector_set, tgt_seq)
 
     def training_step(self, batch, batch_idx):
-        """
-        Performs a single training step with scheduled sampling.
-
-        With ss_epsilon > 0, each decoder input position is replaced with probability
-        epsilon by the model's own prediction (scheduled sampling).
-        Position 0 (START token) is never replaced.
-
-        Parameters
-        ----------
-        batch : tuple
-            A batch containing input vector sets and padded target sequences.
-        batch_idx : int
-            Index of the current batch.
-
-        Returns
-        -------
-        torch.Tensor
-            The computed training loss.
-        """
         vector_set, padded_targets = batch
         decoder_input = padded_targets[:, :-1]  # [START, step1, ..., STOP] – remove last token
 
@@ -150,15 +110,6 @@ class ARMSTM(pl.LightningModule):
         """
         Generate sequences in autoregressive fashion using the decoder model.
 
-        Parameters
-        ----------
-        vector_set : torch.Tensor
-            Input vector sets.
-        return_probs : bool, optional
-            Whether to return token probabilities (default: False).
-        device : str, optional
-            Device to run generation on (default: "cpu").
-
         Returns
         -------
         torch.Tensor
@@ -167,16 +118,7 @@ class ARMSTM(pl.LightningModule):
         return self.model.generate(vector_set, return_probs=False, device=device)
 
     def validation_step(self, batch, batch_idx):
-        """
-        Performs a single validation step with optional metric logging.
 
-        Parameters
-        ----------
-        batch : tuple
-            A batch containing input vector sets and padded target sequences.
-        batch_idx : int
-            Index of the current validation batch.
-        """
         vector_set, padded_targets = batch
 
         # Teacher forcing: val_loss + val_acc as optimization signal
@@ -214,10 +156,6 @@ class ARMSTM(pl.LightningModule):
         self.log("lr", self.trainer.optimizers[0].param_groups[0]['lr'])
 
     def test_step(self, batch, batch_idx):
-        """
-        Computes sequence metrics on the test dataset – exclusively autoregressive generation,
-        no teacher forcing. Called once after training via trainer.test().
-        """
         vector_set, padded_targets = batch
 
         with torch.no_grad():
@@ -232,18 +170,16 @@ class ARMSTM(pl.LightningModule):
 
         
     def on_train_start(self):
-        """Logs the actual Flash Attention status as an MLflow tag."""
+
         device = next(self.parameters()).device
-        precision = self.trainer.precision  # e.g. "bf16-mixed", "32"
+        precision = self.trainer.precision  
 
         on_cuda = device.type == "cuda"
         is_low_precision = any(p in str(precision) for p in ("16", "bf16"))
 
-        # Check whether Flash Attention is actually running: force a small dummy forward pass
         flash_active = False
         if on_cuda and is_low_precision:
             try:
-                # SDPA expects (batch, heads, seq_len, head_dim)
                 nhead = self.hparams.nhead
                 head_dim = self.hparams.embed_dim // nhead
                 dummy = torch.randn(1, nhead, 4, head_dim, device=device, dtype=torch.bfloat16)
@@ -254,26 +190,13 @@ class ARMSTM(pl.LightningModule):
                 flash_active = False
 
         mlflow.log_params({
-            "flash_attention_active": flash_active,
             "training_device": str(device),
             "training_precision": str(precision),
             "batch_size": self.trainer.train_dataloader.batch_size,
         })
 
-        status = "ACTIVE" if flash_active else "INACTIVE"
-        logging.getLogger(__name__).info(
-            f"Flash Attention: {status}  (device={device}, precision={precision})"
-        )
-
     def configure_optimizers(self):
-        """
-        Configures the optimizer and learning rate scheduler.
-
-        Returns
-        -------
-        dict
-            Dictionary with optimizer and scheduler configuration.
-        """
+        """Configures the optimizer and learning rate scheduler."""
         # AdamW-Optimizer
         optimizer = torch.optim.AdamW(
             self.parameters(),          

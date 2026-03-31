@@ -26,7 +26,6 @@ import mlflow
 import numpy as np
 import seaborn as sns
 import torch
-import torch.nn.functional as F
 from pytorch_lightning import Callback
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import MLFlowLogger
@@ -172,7 +171,8 @@ class _SequencePlotMixin:
 
         # Relative confusion matrix (row-normalized, i.e. recall per class)
         row_sums = cm.sum(axis=1, keepdims=True)
-        cm_rel = np.where(row_sums > 0, cm / row_sums, 0.0)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            cm_rel = np.where(row_sums > 0, cm / row_sums, 0.0)
         fig2, ax2 = plt.subplots(figsize=(8, 6))
         sns.heatmap(cm_rel, annot=True, fmt=".2f", cmap="Blues", vmin=0.0, vmax=1.0,
                     xticklabels=labels, yticklabels=labels, ax=ax2)
@@ -229,8 +229,7 @@ class _SequencePlotMixin:
 class MLflowCheckpointCallback(Callback):
     """
     Logs the best checkpoints (save_top_k) as MLflow artifacts under
-    'checkpoints/' at the end of training. This saves exactly the top-k models
-    – without accumulating all intermediate states.
+    'checkpoints/' at the end of training, then deletes the local copies.
     """
 
     def on_train_end(self, trainer, pl_module):
@@ -238,14 +237,21 @@ class MLflowCheckpointCallback(Callback):
             return
         for cb in trainer.callbacks:
             if isinstance(cb, ModelCheckpoint):
+                dirs_to_clean = set()
                 for path in cb.best_k_models:
-                    if path:
-                        mlflow.MlflowClient().log_artifact(
-                            trainer.logger.run_id,
-                            path,
-                            artifact_path="checkpoints",
-                        )
-                        logger.info(f"Checkpoint logged to MLflow: {path}")
+                    if not path or not os.path.exists(path):
+                        continue
+                    mlflow.MlflowClient().log_artifact(
+                        trainer.logger.run_id,
+                        path,
+                        artifact_path="checkpoints",
+                    )
+                    logger.info(f"Checkpoint logged to MLflow: {path}")
+                    dirs_to_clean.add(os.path.dirname(path))
+                    os.remove(path)
+                for d in dirs_to_clean:
+                    if os.path.isdir(d) and not os.listdir(d):
+                        os.removedirs(d)
 
 
 # ---------------------------------------------------------------------------

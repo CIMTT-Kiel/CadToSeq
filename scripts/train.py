@@ -5,27 +5,23 @@ Runs hyperparameter tuning and/or final training for the CadToSeq model.
 
 Usage
 -----
-# Final training only (parameters from train.yaml):
+# Final training only (parameters from config.yaml):
     python scripts/train.py
 
 # Specify a custom config:
-    python scripts/train.py --config=src/mpp/config/my_run.yaml
+    python scripts/train.py --config=my_run.yaml
 
 # Override individual parameters:
-    python scripts/train.py --lr=0.001 --num_layers=4
+    python scripts/train.py --lr=0.001 --num_layers=4 ...
 
-# With hyperparameter tuning:
+# With hyperparameter tuning (final training is performed with best params from tuning phase):
     python scripts/train.py --tuning=True
-
-# Tuning + subsequent final training with overridden parameters:
-    python scripts/train.py --tuning=True --embed_dim=128 --nhead=16
 
 Hyperparameter priority (highest first)
 ----------------------------------------
 1. CLI arguments          (--lr, --embed_dim, ...)
-2. train.yaml / --config  (src/mpp/config/train.yaml)
+2. config.yaml model block / --config
 3. Optuna best trial      (only if --tuning=True)
-4. cadtoseq.yaml defaults
 """
 
 import argparse
@@ -33,8 +29,6 @@ from pathlib import Path
 
 import mlflow
 import torch
-import yaml
-
 from mpp.ml.callbacks.artifact_callbacks import (
     BestModelPlotCallback,
     SequencePredictionPlotCallback,
@@ -53,8 +47,7 @@ from mpp.ml.pipelines.base_pipeline import (
     suggest_hyperparams,
 )
 
-_CFG_PATH         = PATHS.CONFIG / "cadtoseq.yaml"   # internal defaults
-_PROJECT_CFG_PATH = PATHS.ROOT / "config.yaml"        # user-facing config
+_CONFIG_PATH = PATHS.CONFIG / "config.yaml"
 
 
 def parse_args():
@@ -69,8 +62,8 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=Path,
-        default=_PROJECT_CFG_PATH,
-        help=f"Path to the project config YAML (default: {_PROJECT_CFG_PATH})",
+        default=_CONFIG_PATH,
+        help=f"Path to the config YAML (default: {_CONFIG_PATH})",
     )
 
     # Model hyperparameters — all optional, override config values
@@ -83,19 +76,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_train_config(path: Path) -> dict:
-    """Load the 'model' block from a config YAML (config.yaml or train.yaml)."""
-    with open(path) as f:
-        return yaml.safe_load(f).get("model", {})
-
-
 def resolve_hyperparams(args, cfg: dict, train_cfg: dict, best_trial_params: dict | None = None) -> dict:
-    """Determines final hyperparameters by priority:
-    1. CLI arguments        (highest priority)
-    2. train.yaml / --config
-    3. Optuna best trial    (if --tuning=True)
-    4. cadtoseq.yaml defaults (midpoint of search space)
-    """
+    """Determines final hyperparameters by priority:"""
+    
     hp_cfg = cfg["hyperparameter_search"]
 
     def cfg_default(name):
@@ -104,7 +87,7 @@ def resolve_hyperparams(args, cfg: dict, train_cfg: dict, best_trial_params: dic
             return spec["choices"][0]
         return (spec["low"] + spec["high"]) / 2
 
-    # Base: cadtoseq.yaml defaults
+    # Base: config.yaml hyperparameter_search defaults
     base = {
         "lr":         cfg_default("lr"),
         "embed_dim":  cfg_default("embed_dim"),
@@ -113,11 +96,11 @@ def resolve_hyperparams(args, cfg: dict, train_cfg: dict, best_trial_params: dic
         "dropout":    cfg_default("dropout"),
     }
 
-    # Optuna result overrides cadtoseq defaults
+    # Optuna result overrides search space defaults
     if best_trial_params:
         base.update(best_trial_params)
 
-    # train.yaml overrides Optuna
+    # config.yaml model block overrides Optuna
     if train_cfg:
         for key in ("lr", "embed_dim", "nhead", "num_layers", "dropout"):
             if key in train_cfg:
@@ -159,6 +142,7 @@ def run_hyperparameter_tuning(cfg: dict, train_loader, val_loader) -> dict:
                 cfg["mlflow"]["tuning_experiment_name"],
                 run_id=child_run.info.run_id,
             )
+            mlf_logger.log_hyperparams(hp)
             callbacks = build_callbacks(
                 cfg,
                 cfg["checkpoint"]["tuning_subdir"],
@@ -172,11 +156,7 @@ def run_hyperparameter_tuning(cfg: dict, train_loader, val_loader) -> dict:
             trainer = build_trainer(cfg, max_epochs, mlf_logger, callbacks)
             trainer.fit(model, train_loader, val_loader)
 
-            val_loss = trainer.callback_metrics["val_loss"].item()
-            mlf_logger.log_hyperparams(trial.params)
-            mlf_logger.log_metrics({"val_loss": val_loss})
-
-        return val_loss
+        return trainer.callback_metrics["val_loss"].item()
 
     mlflow.set_tracking_uri(cfg["mlflow"]["tracking_uri"])
     mlflow.set_experiment(cfg["mlflow"]["tuning_experiment_name"])
@@ -210,35 +190,38 @@ def run_final_training(cfg: dict, hp: dict, train_loader, val_loader):
         ss_warmup_epochs=cfg["scheduled_sampling"]["warmup_epochs"],
     )
 
-    mlf_logger = build_mlflow_logger(
-        cfg, cfg["mlflow"]["experiment_name"], run_name="best-model"
-    )
-    callbacks = build_callbacks(
-        cfg,
-        cfg["checkpoint"]["best_subdir"],
-        cfg["checkpoint"]["filename"],
-        patience=cfg["training"]["final_patience"],
-    )
-    callbacks.append(SequencePredictionPlotCallback(
-        plot_every_n_epochs=cfg["training"]["plot_every_n_epochs"],
-    ))
-    callbacks.append(BestModelPlotCallback())
-    callbacks.append(SequenceTestPlotCallback())
+    mlflow.set_tracking_uri(cfg["mlflow"]["tracking_uri"])
+    mlflow.set_experiment(cfg["mlflow"]["experiment_name"])
+    with mlflow.start_run(run_name="best-model") as run:
+        mlf_logger = build_mlflow_logger(
+            cfg, cfg["mlflow"]["experiment_name"], run_id=run.info.run_id
+        )
+        callbacks = build_callbacks(
+            cfg,
+            cfg["checkpoint"]["best_subdir"],
+            cfg["checkpoint"]["filename"],
+            patience=cfg["training"]["final_patience"],
+        )
+        callbacks.append(SequencePredictionPlotCallback(
+            plot_every_n_epochs=cfg["training"]["plot_every_n_epochs"],
+        ))
+        callbacks.append(BestModelPlotCallback())
+        callbacks.append(SequenceTestPlotCallback())
 
-    trainer = build_trainer(cfg, cfg["training"]["final_epochs"], mlf_logger, callbacks)
-    trainer.fit(model, train_loader, val_loader)
+        trainer = build_trainer(cfg, cfg["training"]["final_epochs"], mlf_logger, callbacks)
+        trainer.fit(model, train_loader, val_loader)
 
-    test_loader = get_test_dataloader(cfg)
-    trainer.test(model, test_loader, ckpt_path="best")
+        test_loader = get_test_dataloader(cfg)
+        trainer.test(model, test_loader, ckpt_path=None)
 
 
 def main():
     args = parse_args()
-    cfg = load_config(_CFG_PATH)
+    cfg = load_config(args.config)
     train_loader, val_loader = get_dataloaders(cfg)
 
-    train_cfg = load_train_config(args.config)
-    print(f"Train config loaded: {args.config}")
+    train_cfg = cfg.get("model", {})
+    print(f"Config loaded: {args.config}")
 
     best_trial_params = None
     if args.tuning:

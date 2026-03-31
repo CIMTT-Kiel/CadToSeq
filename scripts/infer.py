@@ -8,11 +8,8 @@ Usage
 # Predict from a pre-computed vecset.npy:
     python scripts/infer.py --vecset path/to/features/vecset.npy
 
-# Use a specific checkpoint (overrides config.yaml):
+# Use a specific checkpoint (overrides config/config.yaml):
     python scripts/infer.py --vecset path/to/features/vecset.npy --ckpt checkpoints/cadtoseq.ckpt
-
-# Run on GPU:
-    python scripts/infer.py --vecset path/to/features/vecset.npy --device cuda
 """
 
 import argparse
@@ -38,19 +35,19 @@ def parse_args():
         "--ckpt",
         type=Path,
         default=None,
-        help="Path to a CadToSeq checkpoint (overrides config.yaml)",
+        help="Path to a CadToSeq checkpoint (overrides config/config.yaml)",
     )
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("config.yaml"),
-        help="Path to config.yaml (default: config.yaml)",
+        default=Path("config/config.yaml"),
+        help="Path to config/config.yaml (default: config/config.yaml)",
     )
     parser.add_argument(
         "--device",
         type=str,
-        default="cpu",
-        help="Device to run inference on: 'cpu' or 'cuda' (default: cpu)",
+        default="cuda",
+        help="Device to run inference on: 'cpu' or 'cuda' (default: 'cuda')",
     )
     return parser.parse_args()
 
@@ -65,7 +62,7 @@ def main():
     if not Path(ckpt_path).exists():
         raise FileNotFoundError(
             f"Checkpoint not found: {ckpt_path}\n"
-            "Set 'paths.cadtoseq_ckpt' in config.yaml or pass --ckpt."
+            "Set 'paths.cadtoseq_ckpt' in config/config.yaml or pass --ckpt."
         )
 
     model = ARMSTM.load_from_checkpoint(ckpt_path, map_location=args.device)
@@ -77,7 +74,7 @@ def main():
         token_ids = model.generate(vecset, device=args.device)
 
     ids = token_ids[0].tolist()
-    # Truncate at STOP token (inclusive) and drop trailing PAD tokens
+
     from mpp.constants import VOCAB
     stop_id = VOCAB["STOP"]
     if stop_id in ids:

@@ -17,29 +17,24 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter("%(asctime)s %(levelname)8s - %(message)s")
 
 def collate_fn(batch):
     """
-    Custom collate function for batching variable-length target sequences.
-
-    This function stacks input feature vectors and pads the target sequences
-    (plans) to a fixed maximum length using the PAD token from the VOCAB.
+    This function stacks feature vectors and pads the target sequences
+    (plans) to a fixed maximum length using the PAD token from VOCAB.
 
     Parameters
     ----------
     batch : list of tuples
         Each element is a (vecset, plan) tuple where:
-        - vecset : torch.Tensor of shape (set_size, input_dim)
+        - vecset : torch.Tensor (num_tokens, input_dim)
         - plan : torch.Tensor of variable length (sequence of token indices)
 
     Returns
     -------
     vecsets : torch.Tensor
-        Stacked feature vectors of shape (batch_size, set_size, input_dim).
+        Stacked feature vectors of shape (batch_size, num_tokens, input_dim).
     padded_plans : torch.Tensor
-        Padded sequences of shape (batch_size, max_len), where padding tokens
-        are added to match the maximum allowed sequence length.
     """
     vecsets, plans = zip(*batch)
     vecsets = torch.stack(vecsets)
@@ -67,18 +62,18 @@ class Fabricad_datamodule(pl.LightningDataModule):
     num_workers : int, optional
         Number of subprocesses to use for data loading (default: 4).
     input_type : str, optional
-        Type of input to be used. Currently only "vecset" is supported.
+        Type of input to be used. In this project only "vecset"
     target_type : str, optional
         Type of target labels. Currently only "seq" is supported for CadToSeq.
     """
-    def __init__(self, batch_size=32, num_workers=0, input_type="vecset", target_type="seq"):
+    def __init__(self, batch_size=32, num_workers=0, input_type="vecset", target_type="seq", data_dir=None):
         super().__init__()
         logger.info("Initializing Fabricad datamodule")
         self.batch_size = batch_size
         self.num_workers = num_workers
-
-        self.input_type=input_type
-        self.target_type =target_type
+        self.input_type = input_type
+        self.target_type = target_type
+        self.data_dir = data_dir
 
     def setup(self, stage=None):
         """
@@ -94,12 +89,12 @@ class Fabricad_datamodule(pl.LightningDataModule):
         """
         logger.info(f"Setting up Fabricad datamodule for stage: {stage}")
         if stage == "fit" or stage is None:
-            self.train_dataset = Fabricad(mode="train", input_type=self.input_type, target_type=self.target_type)
-            self.val_dataset = Fabricad(mode="valid", input_type=self.input_type, target_type=self.target_type)
+            self.train_dataset = Fabricad(mode="train", input_type=self.input_type, target_type=self.target_type, data_dir=self.data_dir)
+            self.val_dataset = Fabricad(mode="valid", input_type=self.input_type, target_type=self.target_type, data_dir=self.data_dir)
             logger.info(f"Train dataset size: {len(self.train_dataset)}, Validation dataset size: {len(self.val_dataset)}")
 
         if stage == "test" or stage is None:
-            self.test_dataset = Fabricad(mode="test", input_type=self.input_type, target_type=self.target_type)
+            self.test_dataset = Fabricad(mode="test", input_type=self.input_type, target_type=self.target_type, data_dir=self.data_dir)
             logger.info(f"Test dataset size: {len(self.test_dataset)}")
 
     def _get_collate_fn(self):
