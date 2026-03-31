@@ -10,6 +10,8 @@ paths:
   data_dir: data/fabricad_examples   # 100-sample demo subset — for demonstration only, see README
   # Full FabriCAD dataset (100k samples, CAD files, full feature set): https://cimtt-kiel.github.io/FabriCAD/
 
+
+  # DEPRICATED - checkpoints are only saved as temp files in the following dirs. Final models are logged in mlflow as artifacts 
   # Directory where training checkpoints are saved.
   checkpoint_dir: checkpoints
 
@@ -38,13 +40,13 @@ data:
 # ------------------------------------------------------------
 training:
   gpu_id: 0                 # GPU index (0-based)
-  n_trials: 5           # Optuna trials for HP tuning
-  tuning_epochs: 10       # Max epochs per tuning trial
+  n_trials: 100          # Optuna trials for HP tuning
+  tuning_epochs: 100       # Max epochs per tuning trial
   tuning_patience: 10       # Early-stopping patience during tuning
-  final_epochs: 3        # Max epochs for final training run
-  final_patience: 20        # Early-stopping patience for final run
+  final_epochs: 1000      # Max epochs for final training run
+  final_patience: 30        # Early-stopping patience for final run
   weight_decay: 0.01
-  log_every_n_steps: 1
+  log_every_n_steps: 5
   plot_every_n_epochs: 5    # Frequency of MLflow diagnostic plots
 
 # ------------------------------------------------------------
