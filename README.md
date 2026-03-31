@@ -1,4 +1,4 @@
-# Disclaimer 
+# Disclaimer
 **Work in Progress — Not yet fully validated**
 This repository is currently being extracted from a larger research project. The process is not yet complete, so the code has not been fully tested and validated. A stable, reviewed version will be available shortly.
 
@@ -8,9 +8,19 @@ This repository is currently being extracted from a larger research project. The
 
 Given a set of geometry feature vectors `[1024, 32]` (VecSet embeddings), CadToSeq generates an ordered sequence of manufacturing steps such as:
 
-> *fräsen → bohren → schweißen → schleifen → STOP*
+> *milling → drilling → welding → grinding → STOP*
 
-> **Note on geometry embeddings:** VecSet embeddings are produced from surface point clouds using the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. That preprocessing step is **not part of this repository** — CadToSeq takes pre-computed `vecset.npy` files as input. See [Preparing your data](#preparing-your-data) below.
+> **Note on geometry embeddings:** VecSet embeddings are produced from surface point clouds using the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. The preprocessing step is **not part of this repository** — CadToSeq takes pre-computed `vecset.npy` files as input. See [Preparing your data](#preparing-your-data) below.
+
+---
+
+## Demo data
+
+This repository includes **100 randomly selected samples**  from the FabriCAD dataset in `data/fabricad_examples/`.
+
+> **These are incomplete demonstration samples.** Each sample contains only the files required to run the CadToSeq pipeline (`vecset.npy` and `plan.csv`). The full CAD geometry (STEP files), detailed feature-level information, are available from the fabricad dataset. 
+
+The default `config/config.yaml` points to this demo subset so the pipeline can be run immediately. For training a production model, replace `paths.data_dir` with the path to the full dataset [https://cimtt-kiel.github.io/FabriCAD/](https://cimtt-kiel.github.io/FabriCAD/).
 
 ---
 
@@ -41,7 +51,7 @@ source .venv/bin/activate
 
 ## Preparing your data
 
-The current configuration expects each sample its own directory:
+Each sample must have its own directory with the following structure:
 
 ```
 <data_dir>/
@@ -51,30 +61,16 @@ The current configuration expects each sample its own directory:
         plan.csv         # process plan (Schritt;Dauer[min];Kosten[($)])
 ```
 
-**FabriCAD data:** Download the [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client) dataset and generate VecSet embeddings with the [3DShape2VecSet](https://github.com/1zb/3DShape2VecSet) encoder. Then set `paths.data_dir` in `config.yaml` to point at the dataset root.
-
-**Synthetic test data:** To try out the pipeline without real data, generate trivial random samples:
-
-```bash
-python scripts/create_test_data.py            # creates 200 samples in ./test_data
-python scripts/create_test_data.py --data_dir /tmp/mydata --n_samples 500
-```
-
-Then update `config.yaml`:
-
-```yaml
-paths:
-  data_dir: ./test_data
-```
+To use the full FabriCAD dataset, see [https://cimtt-kiel.github.io/FabriCAD/](https://cimtt-kiel.github.io/FabriCAD/).
 
 ---
 
 ## Training
 
-All hyperparameters are controlled via `config.yaml`. Start training with:
+All hyperparameters are controlled via `config/config.yaml`. Start training with:
 
 ```bash
-# Train with the best-known hyperparameters from config.yaml:
+# Train with the best-known hyperparameters from config/config.yaml:
 python scripts/train.py
 
 # Run Optuna hyperparameter search first, then final training:
@@ -91,7 +87,7 @@ python scripts/train.py --lr=0.001 --embed_dim=96 --num_layers=3
 **From the command line:**
 
 ```bash
-python scripts/infer.py --vecset path/to/features/vecset.npy
+python scripts/infer.py --vecset path/to/features/vecset.npy --ckpt path/to/cadtoseq_checkpoint.ckpt
 ```
 
 **From Python:**
@@ -100,7 +96,7 @@ python scripts/infer.py --vecset path/to/features/vecset.npy
 import torch
 import numpy as np
 from mpp.ml.models.sequence.cadtoseq_module import ARMSTM
-from mpp.ml.datasets.fabricad import Fabricad 
+from mpp.ml.datasets.fabricad import Fabricad
 
 model = ARMSTM.load_from_checkpoint("checkpoints/cadtoseq.ckpt", map_location="cpu")
 model.eval()
@@ -115,22 +111,6 @@ print(Fabricad.decode_sequence(token_ids[0].tolist()))
 
 ---
 
-## Dataset
-
-The model was trained on [FabriCAD](https://github.com/CIMTT-Kiel/cad-api-client). Each sample consists multiple files. For this project the following are essential:
-
-| File | Description |
-|------|-------------|
-| `features/vecset.npy` | Geometry embedding of shape `[1024, 32]` |
-| `plan.csv` | Process plan with columns `Schritt;Dauer[min];Kosten[($)]` |
-
-Dataset paths can be set via environment variables or directly in `config.yaml`:
-
-```bash
-export MPP_FEATURE_DATA=/path/to/fabricad
-```
-
----
 
 ## Citation
 
