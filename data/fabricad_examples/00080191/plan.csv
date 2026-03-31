@@ -1,0 +1,4 @@
+Nr.;Schritt;Materialnummer;Volumen[mm^3];Arbeitsplatz;Qualifikation;Kosten[($)];Dauer[min]
+0;initWorkingstep;null;500000.0;null;1;0.0;0.0
+1;liefern;00080191;500000.0;liefern_3;1;0.0;0.0
+2;bohren;00080191;489389.2708125005;Drill_Press_04;2;6.1850989483746375;12.264088763851424

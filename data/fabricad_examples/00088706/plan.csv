@@ -1,0 +1,4 @@
+Nr.;Schritt;Materialnummer;Volumen[mm^3];Arbeitsplatz;Qualifikation;Kosten[($)];Dauer[min]
+0;initWorkingstep;null;490873.8521234052;null;1;0.0;0.0
+1;liefern;00088706;490873.8521234052;liefern_2;1;0.0;0.0
+2;drehen;00088706;206946.03692303906;CNC_Lathe_02;1;8.426262602679712;12.984002306262262
