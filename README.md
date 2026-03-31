@@ -1,7 +1,7 @@
 # CadToSeq
 
-[!WARNING]
-Work in Progress — Not yet fully validated
+## Disclaimer 
+**Work in Progress — Not yet fully validated**
 This repository is currently being extracted from a larger research project. The process is not yet complete, so the code has not been fully tested and validated. A stable, reviewed version will be available shortly.
 
 **Predicts manufacturing process sequences directly from CAD geometry — using a Transformer decoder.**
