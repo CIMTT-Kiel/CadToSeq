@@ -2,19 +2,19 @@
 Shared pipeline utilities for CadToSeq training.
 
 Provides functions to create dataloaders, MLflow loggers, callbacks, and
-trainers. Configuration is provided via YAML files in the config/ directory.
+trainers. Configuration is provided via config.yaml in the project root.
 
 Usage
 -----
     from mpp.ml.pipelines.base_pipeline import load_config, get_dataloaders, ...
 
-    cfg = load_config(Path("config/cadtoseq.yaml"))
+    cfg = load_config(Path("config/config.yaml"))
     train_loader, val_loader = get_dataloaders(cfg)
 
 Note
 ----
 Extracted and optimised from a larger research codebase with the assistance
-of Claude (Anthropic) – https://claude.ai
+of Claude (Anthropic) – https://claude.ai but validated manually
 """
 
 from __future__ import annotations
@@ -29,48 +29,17 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import MLFlowLogger
 
-from mpp.constants import PATHS
 from mpp.ml.callbacks.artifact_callbacks import MLflowCheckpointCallback
 from mpp.ml.datasets.fabricad_datamodule import Fabricad_datamodule
-
-_BASE_CONFIG_PATH = PATHS.CONFIG / "base.yaml"
 
 
 # ---------------------------------------------------------------------------
 # Config-Loading
 # ---------------------------------------------------------------------------
 
-def load_config(task_config_path: str | Path) -> dict[str, Any]:
-    """Load and merge base.yaml with a task-specific config file.
-
-    The task config overrides values from the base config (deep merge).
-
-    Parameters
-    ----------
-    task_config_path:
-        Path to the task-specific YAML file.
-
-    Returns
-    -------
-    dict
-        Merged configuration.
-    """
-    with open(_BASE_CONFIG_PATH) as f:
-        cfg = yaml.safe_load(f)
-    with open(task_config_path) as f:
-        task_cfg = yaml.safe_load(f)
-    return _deep_merge(cfg, task_cfg)
-
-
-def _deep_merge(base: dict, override: dict) -> dict:
-    """Recursive deep merge: override values replace base values."""
-    result = dict(base)
-    for key, val in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(val, dict):
-            result[key] = _deep_merge(result[key], val)
-        else:
-            result[key] = val
-    return result
+def load_config(config_path: str | Path) -> dict[str, Any]:
+    with open(config_path) as f:
+        return yaml.safe_load(f)
 
 
 # ---------------------------------------------------------------------------
@@ -78,49 +47,25 @@ def _deep_merge(base: dict, override: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def get_dataloaders(cfg: dict):
-    """Create and return (train_loader, val_loader) from the config.
-
-    Parameters
-    ----------
-    cfg:
-        Merged configuration (result of load_config()).
-
-    Returns
-    -------
-    tuple[DataLoader, DataLoader]
-        Training and validation DataLoaders.
-    """
     dm = Fabricad_datamodule(
         batch_size=cfg["data"]["batch_size"],
         num_workers=cfg["data"]["num_workers"],
         input_type=cfg["data"]["input_type"],
         target_type=cfg["data"]["target_type"],
+        data_dir=cfg["paths"]["data_dir"],
     )
     dm.setup(stage="fit")
     return dm.train_dataloader(), dm.val_dataloader()
 
 
 def get_test_dataloader(cfg: dict):
-    """Create and return the test DataLoader from the config.
-
-    Must only be called after the entire training (including HP tuning) is complete
-    to avoid data leakage.
-
-    Parameters
-    ----------
-    cfg:
-        Merged configuration (result of load_config()).
-
-    Returns
-    -------
-    DataLoader
-        Test DataLoader.
-    """
+    """Create and return the test DataLoader from the config"""
     dm = Fabricad_datamodule(
         batch_size=cfg["data"]["batch_size"],
         num_workers=cfg["data"]["num_workers"],
         input_type=cfg["data"]["input_type"],
         target_type=cfg["data"]["target_type"],
+        data_dir=cfg["paths"]["data_dir"],
     )
     dm.setup(stage="test")
     return dm.test_dataloader()
@@ -179,7 +124,7 @@ def build_callbacks(
     cfg:
         Merged configuration.
     checkpoint_subdir:
-        Subdirectory relative to PATHS.CKPT_DIR for checkpoints.
+        Subdirectory relative to cfg["paths"]["checkpoint_dir"] for checkpoints.
     filename:
         Filename pattern for ModelCheckpoint.
     patience:
@@ -200,7 +145,7 @@ def build_callbacks(
         monitor="val_loss",
         save_top_k=3,
         mode="min",
-        dirpath=(PATHS.CKPT_DIR / checkpoint_subdir).as_posix(),
+        dirpath=(Path(cfg["paths"]["checkpoint_dir"]) / checkpoint_subdir).as_posix(),
         filename=filename,
         save_weights_only=False,
         verbose=True,

@@ -1,15 +1,17 @@
 # ============================================================
 # CadToSeq – Project Configuration
-# ============================================================
-# CLI arguments (--lr, --device, ...) override values.
+# CLI arguments override values.
 # ============================================================
 
 # ------------------------------------------------------------
 # Paths
 # ------------------------------------------------------------
 paths:
-  data_dir: /path/to/fabricad   # or ./test_data when using create_test_data.py
-  # FabriCAD dataset: https://github.com/CIMTT-Kiel/cad-api-client
+  data_dir: data/fabricad_examples   # 100-sample demo subset — for demonstration only, see README
+  # Full FabriCAD dataset (100k samples, CAD files, full feature set): https://cimtt-kiel.github.io/FabriCAD/
+
+  # Directory where training checkpoints are saved.
+  checkpoint_dir: checkpoints
 
   # Trained CadToSeq model checkpoint (used for inference).
   cadtoseq_ckpt: checkpoints/cadtoseq.ckpt
@@ -18,9 +20,9 @@ paths:
 # MLflow experiment tracking
 # ------------------------------------------------------------
 mlflow:
-  tracking_uri: "./mlruns" # or server
-  experiment_name: "cadtoseq"
-  tuning_experiment_name: "cadtoseq-hyperparameter-tuning"
+  tracking_uri: "http://mlflow-server:5000" # or server if available
+  experiment_name: "cadtoseq-0"
+  tuning_experiment_name: "cadtoseq-hyperparameter-tuning-0"
 
 # ------------------------------------------------------------
 # Data loading
@@ -36,13 +38,13 @@ data:
 # ------------------------------------------------------------
 training:
   gpu_id: 0                 # GPU index (0-based)
-  n_trials: 50              # Optuna trials for HP tuning
-  tuning_epochs: 100        # Max epochs per tuning trial
+  n_trials: 5           # Optuna trials for HP tuning
+  tuning_epochs: 10       # Max epochs per tuning trial
   tuning_patience: 10       # Early-stopping patience during tuning
-  final_epochs: 1000        # Max epochs for final training run
-  final_patience: 50        # Early-stopping patience for final run
+  final_epochs: 3        # Max epochs for final training run
+  final_patience: 20        # Early-stopping patience for final run
   weight_decay: 0.01
-  log_every_n_steps: 5
+  log_every_n_steps: 1
   plot_every_n_epochs: 5    # Frequency of MLflow diagnostic plots
 
 # ------------------------------------------------------------
@@ -82,7 +84,7 @@ hyperparameter_search:
     step: 32
 
 # ------------------------------------------------------------
-# Default Model hyperparameters - according to paper
+# Default Model hyperparameters - according to CIRP ICME Paper - best configuration
 # ------------------------------------------------------------
 model:
   lr: 9.77e-4
